@@ -12,7 +12,7 @@
   <script>
     async function fetchApps() {
       try {
-        const response = await fetch('/api/list?collection=topFreeApps&category=games');
+        const response = await fetch('/api/list?collection=store.collection.TOP_GROSSING_IOS&country=cn');
         const data = await response.json();
         displayApps(data);
       } catch (error) {
