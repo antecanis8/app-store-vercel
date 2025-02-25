@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "A simple API for scraping the App Store",
     "dependencies": {
-      "app-store-scraper": "^2.2.0",
+      "app-store-scraper": "^0.18.0",
       "express": "^4.17.3",
       "cors": "^2.8.5"
     },
