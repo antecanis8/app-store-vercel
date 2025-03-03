@@ -1,7 +1,6 @@
 {
   "functions": {
     "pages/api/list.js": {
-      "memory": 3009,
       "maxDuration": 30
     }
   }
