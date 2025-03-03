@@ -5,5 +5,10 @@
       "src": "next.config.js",
       "use": "@vercel/next"
     }
-  ]
+  ],
+  "functions": {
+    "pages/api/*.js": {
+      "maxDuration": 30
+    }
+  }
 }
