@@ -1,22 +1,32 @@
 import * as store from 'app-store-scraper';
 
 // 定义有效的 collection 值
+// const VALID_COLLECTIONS = [
+//   'TOP_MAC',
+//   'TOP_FREE_MAC',
+//   'TOP_GROSSING_MAC',
+//   'TOP_PAID_MAC',
+//   'NEW_IOS',
+//   'NEW_FREE_IOS',
+//   'NEW_PAID_IOS',
+//   'TOP_FREE_IOS',
+//   'TOP_FREE_IPAD',
+//   'TOP_GROSSING_IOS',
+//   'TOP_GROSSING_IPAD',
+//   'TOP_PAID_IOS',
+//   'TOP_PAID_IPAD'
+// ];
 const VALID_COLLECTIONS = [
-  'TOP_MAC',
-  'TOP_FREE_MAC',
-  'TOP_GROSSING_MAC',
-  'TOP_PAID_MAC',
-  'NEW_IOS',
-  'NEW_FREE_IOS',
-  'NEW_PAID_IOS',
-  'TOP_FREE_IOS',
-  'TOP_FREE_IPAD',
-  'TOP_GROSSING_IOS',
-  'TOP_GROSSING_IPAD',
-  'TOP_PAID_IOS',
-  'TOP_PAID_IPAD'
+  'topfreeapplications',
+  'toppaidapplications',
+  'topfreeipadapplications',
+  'toppaidipadapplications',
+  'topgrossingapplications',
+  'topgrossingipadapplications',
+  'newapplications',
+  'newfreeipadapplications',
+  'newpaidipadapplications'
 ];
-
 
 export default async (req, res) => {
   if (req.method !== 'GET') {

@@ -9,7 +9,7 @@ export default function Home() {
     async function fetchApps() {
       try {
         setLoading(true);
-        const response = await fetch('/api/list?collection=TOP_GROSSING_IOS&country=cn');
+        const response = await fetch('/api/list?collection=topgrossingapplications&country=cn');
         if (!response.ok) {
           throw new Error('Failed to fetch data');
         }
