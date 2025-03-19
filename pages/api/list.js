@@ -53,7 +53,7 @@ export default async (req, res) => {
 
     const result = await store.list({
       collection,
-      num: 10,
+      num: 100,
       country,
     }).catch(error => {
       console.error('Scraper error:', error);
