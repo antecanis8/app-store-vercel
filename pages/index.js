@@ -131,7 +131,7 @@ export default function Home() {
           marginBottom: '20px'
         }}>
           <img
-            src="/d7faead123aadc4aa3dc8d1b8b59d69b90f38569.png"
+            src="https://bb.zlb.ink/uploads/default/original/3X/d/7/d7faead123aadc4aa3dc8d1b8b59d69b90f38569.png"
             alt="Logo"
             style={{
               width: '60px',
