@@ -1,22 +1,8 @@
-import * as store from 'app-store-scraper';
+import * as appStore from 'app-store-scraper';
+import * as googlePlay from 'google-play-scraper';
 
-// 定义有效的 collection 值
-// const VALID_COLLECTIONS = [
-//   'TOP_MAC',
-//   'TOP_FREE_MAC',
-//   'TOP_GROSSING_MAC',
-//   'TOP_PAID_MAC',
-//   'NEW_IOS',
-//   'NEW_FREE_IOS',
-//   'NEW_PAID_IOS',
-//   'TOP_FREE_IOS',
-//   'TOP_FREE_IPAD',
-//   'TOP_GROSSING_IOS',
-//   'TOP_GROSSING_IPAD',
-//   'TOP_PAID_IOS',
-//   'TOP_PAID_IPAD'
-// ];
-const VALID_COLLECTIONS = [
+// 定义App Store有效的 collection 值
+const VALID_APP_STORE_COLLECTIONS = [
   'topfreeapplications',
   'toppaidapplications',
   'topfreeipadapplications',
@@ -26,6 +12,13 @@ const VALID_COLLECTIONS = [
   'newapplications',
   'newfreeipadapplications',
   'newpaidipadapplications'
+];
+
+// 定义Google Play有效的 collection 值
+const VALID_GOOGLE_PLAY_COLLECTIONS = [
+  'TOP_FREE',
+  'TOP_PAID',
+  'GROSSING'
 ];
 
 export default async (req, res) => {
@@ -39,32 +32,124 @@ export default async (req, res) => {
   }
 
   try {
-    const { collection = 'TOP_FREE_IOS', country = 'us' } = req.query;
+    const {
+      collection = 'topfreeapplications',
+      country = 'us',
+      store = 'appstore' // 默认为App Store
+    } = req.query;
 
-    // 验证 collection 参数
-    if (!VALID_COLLECTIONS.includes(collection)) {
-      return res.status(400).json({ 
-        error: 'Invalid collection parameter',
-        validCollections: VALID_COLLECTIONS
+    console.log('Fetching apps with params:', { store, collection, country });
+
+    let result = [];
+
+    // 根据store参数选择不同的应用商店
+    if (store.toLowerCase() === 'googleplay') {
+      // 验证Google Play的collection参数
+      if (!VALID_GOOGLE_PLAY_COLLECTIONS.includes(collection)) {
+        return res.status(400).json({
+          error: `无效的Google Play榜单类型: ${collection}`,
+          validCollections: VALID_GOOGLE_PLAY_COLLECTIONS
+        });
+      }
+
+      try {
+        // 获取Google Play排行榜数据
+        console.log('Fetching Google Play data with:', { collection, country });
+        result = await googlePlay.default.list({
+          collection,
+          country,
+          num: 100,
+          fullDetail: true
+        });
+        console.log(`Successfully fetched ${result.length} apps from Google Play`);
+      } catch (error) {
+        console.error('Google Play Scraper error:', error);
+        return res.status(500).json({
+          error: `Google Play数据获取失败: ${error.message}`,
+          details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // 格式化Google Play数据，使其与App Store数据格式一致
+      result = result.map(app => ({
+        id: app.appId,
+        appId: app.appId,
+        title: app.title,
+        url: app.url,
+        description: app.description || '',
+        icon: app.icon,
+        genres: app.genres || [],
+        primaryGenre: app.genre || '未知',
+        primaryGenreId: 0,
+        contentRating: app.contentRating || '',
+        languages: [],
+        size: app.size || '',
+        requiredOsVersion: app.androidVersion || '',
+        released: app.released || '',
+        updated: app.updated || '',
+        releaseNotes: app.recentChanges || '',
+        version: app.version || '',
+        price: app.priceText === 'Free' ? 0 : parseFloat(app.price) || 0,
+        currency: app.currency || 'USD',
+        free: app.free === undefined ? app.priceText === 'Free' : app.free,
+        developer: app.developer || '',
+        developerUrl: app.developerUrl || '',
+        developerWebsite: app.developerWebsite || '',
+        score: app.score || 0,
+        reviews: app.reviews || 0,
+        currentVersionScore: app.score || 0,
+        currentVersionReviews: app.reviews || 0,
+        screenshots: app.screenshots || [],
+        store: 'Google Play'
+      }));
+    } else {
+      // 验证App Store的collection参数
+      if (!VALID_APP_STORE_COLLECTIONS.includes(collection)) {
+        return res.status(400).json({
+          error: 'Invalid collection parameter for App Store',
+          validCollections: VALID_APP_STORE_COLLECTIONS
+        });
+      }
+
+      try {
+        // 获取App Store排行榜数据
+        console.log('Fetching App Store data with:', { collection, country });
+        result = await appStore.list({
+          collection,
+          num: 100,
+          country,
+        });
+        console.log(`Successfully fetched ${result.length} apps from App Store`);
+
+        // 为App Store数据添加store标识
+        result = result.map(app => ({
+          ...app,
+          store: 'App Store'
+        }));
+      } catch (error) {
+        console.error('App Store Scraper error:', error);
+        return res.status(500).json({
+          error: `App Store数据获取失败: ${error.message}`,
+          details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    if (!result || !Array.isArray(result)) {
+      return res.status(500).json({
+        error: `从${store}获取的响应无效`,
+        timestamp: new Date().toISOString()
       });
     }
 
-    console.log('Fetching apps with params:', { collection, country });
-
-    const result = await store.list({
-      collection,
-      num: 100,
-      country,
-    }).catch(error => {
-      console.error('Scraper error:', error);
-      throw error;
-    });
-
-    if (!result || !Array.isArray(result)) {
-      throw new Error('Invalid response from app-store-scraper');
+    if (result.length === 0) {
+      console.log(`Warning: No apps found for ${store} with params:`, { collection, country });
+    } else {
+      console.log(`Successfully fetched ${result.length} apps from ${store}`);
     }
-
-    console.log('Successfully fetched apps:', result.length);
+    
     return res.status(200).json(result);
 
   } catch (error) {
@@ -75,7 +160,7 @@ export default async (req, res) => {
     });
     
     return res.status(500).json({
-      error: 'Failed to fetch app data',
+      error: '获取应用数据失败',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       timestamp: new Date().toISOString()
     });

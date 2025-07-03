@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
 
+// 定义应用商店列表
+const stores = [
+  { code: 'appstore', name: 'App Store' },
+  { code: 'googleplay', name: 'Google Play' }
+];
+
 // 定义主要国家列表
 const countries = [
   { code: 'cn', name: '中国' },
@@ -17,8 +23,8 @@ const countries = [
   { code: 'ru', name: '俄罗斯' }
 ];
 
-// 定义应用集合类型列表
-const collections = [
+// 定义App Store应用集合类型列表
+const appStoreCollections = [
   { code: 'topgrossingapplications', name: 'iOS畅销榜' },
   { code: 'topfreeapplications', name: 'iOS免费榜' },
   { code: 'toppaidapplications', name: 'iOS付费榜' },
@@ -27,33 +33,75 @@ const collections = [
   { code: 'toppaidipadapplications', name: 'iPad付费榜' }
 ];
 
+// 定义Google Play应用集合类型列表
+const googlePlayCollections = [
+  { code: 'GROSSING', name: '畅销榜' },
+  { code: 'TOP_FREE', name: '免费榜' },
+  { code: 'TOP_PAID', name: '付费榜' }
+];
+
 export default function Home() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [country, setCountry] = useState('cn');
   const [collection, setCollection] = useState('topgrossingapplications');
+  const [store, setStore] = useState('appstore');
+  
+  // 根据当前选择的应用商店获取对应的集合列表
+  const collections = store === 'appstore' ? appStoreCollections : googlePlayCollections;
 
   useEffect(() => {
     async function fetchApps() {
       try {
         setLoading(true);
-        const response = await fetch(`/api/list?collection=${collection}&country=${country}`);
+        setError(null);
+        
+        console.log('Fetching apps:', { store, collection, country });
+        
+        const response = await fetch(`/api/list?collection=${collection}&country=${country}&store=${store}`);
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch data');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `请求失败，状态码: ${response.status}`);
         }
+        
         const data = await response.json();
-        setApps(data);
+        
+        if (!data || data.length === 0) {
+          setError('没有找到应用数据');
+          setApps([]);
+        } else {
+          setApps(data);
+        }
       } catch (error) {
         console.error('Error fetching apps:', error);
-        setError(error.message);
+        setError(error.message || '获取应用数据失败');
+        setApps([]);
       } finally {
         setLoading(false);
       }
     }
 
     fetchApps();
-  }, [country, collection]); // 当国家或集合类型变化时重新获取数据
+  }, [country, collection, store]); // 当国家、集合类型或应用商店变化时重新获取数据
+  
+  // 验证当前集合类型是否与当前商店匹配（处理URL参数直接修改等特殊情况）
+  useEffect(() => {
+    // 这个useEffect只处理直接修改URL参数等特殊情况
+    // 正常的UI交互已经在handleStoreChange中处理
+    if (store === 'appstore') {
+      const isValidAppStoreCollection = appStoreCollections.some(c => c.code === collection);
+      if (!isValidAppStoreCollection) {
+        setCollection(appStoreCollections[0].code);
+      }
+    } else if (store === 'googleplay') {
+      const isValidGooglePlayCollection = googlePlayCollections.some(c => c.code === collection);
+      if (!isValidGooglePlayCollection) {
+        setCollection(googlePlayCollections[0].code);
+      }
+    }
+  }, [store, collection, country]);
 
   if (loading) return (
     <div style={{
@@ -142,6 +190,21 @@ export default function Home() {
   
   if (error) return <div className="error">错误: {error}</div>;
 
+  // 处理应用商店选择变化
+  const handleStoreChange = (e) => {
+    const newStore = e.target.value;
+    
+    // 在切换商店时，同时更新集合类型为新商店的默认集合
+    if (newStore === 'appstore') {
+      setCollection(appStoreCollections[0].code);
+    } else {
+      setCollection(googlePlayCollections[0].code);
+    }
+    
+    // 最后更新商店值
+    setStore(newStore);
+  };
+
   // 处理国家选择变化
   const handleCountryChange = (e) => {
     setCountry(e.target.value);
@@ -150,6 +213,12 @@ export default function Home() {
   // 处理集合类型选择变化
   const handleCollectionChange = (e) => {
     setCollection(e.target.value);
+  };
+
+  // 获取当前应用商店名称
+  const getCurrentStoreName = () => {
+    const currentStore = stores.find(s => s.code === store);
+    return currentStore ? currentStore.name : 'App Store';
   };
 
   // 获取当前国家名称
@@ -161,14 +230,30 @@ export default function Home() {
   // 获取当前集合类型名称
   const getCurrentCollectionName = () => {
     const currentCollection = collections.find(c => c.code === collection);
-    return currentCollection ? currentCollection.name : 'iOS畅销榜';
+    return currentCollection ? currentCollection.name : (store === 'appstore' ? 'iOS畅销榜' : '畅销榜');
   };
 
   return (
     <div className="container">
-      <h1 className="title">App Store {getCurrentCountryName()}{getCurrentCollectionName()}</h1>
+      <h1 className="title">{getCurrentStoreName()} {getCurrentCountryName()}{getCurrentCollectionName()}</h1>
       
       <div className="selectors-container">
+        <div className="selector">
+          <label htmlFor="store-select">选择应用商店：</label>
+          <select
+            id="store-select"
+            value={store}
+            onChange={handleStoreChange}
+            className="select-input"
+          >
+            {stores.map(s => (
+              <option key={s.code} value={s.code}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="selector">
           <label htmlFor="collection-select">选择榜单类型：</label>
           <select
