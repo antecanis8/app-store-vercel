@@ -1,5 +1,6 @@
 import * as appStore from 'app-store-scraper';
 import * as googlePlay from 'google-play-scraper';
+const { getPSGames, SUPPORTED_REGIONS, SUPPORTED_COLLECTIONS } = require('../../lib/playstation-store');
 
 // 定义App Store有效的 collection 值
 const VALID_APP_STORE_COLLECTIONS = [
@@ -20,6 +21,9 @@ const VALID_GOOGLE_PLAY_COLLECTIONS = [
   'TOP_PAID',
   'GROSSING'
 ];
+
+// 定义PlayStation Store有效的 collection 值
+const VALID_PLAYSTATION_COLLECTIONS = Object.keys(SUPPORTED_COLLECTIONS || {});
 
 export default async (req, res) => {
   if (req.method !== 'GET') {
@@ -102,6 +106,70 @@ export default async (req, res) => {
         currentVersionReviews: app.reviews || 0,
         screenshots: app.screenshots || [],
         store: 'Google Play'
+      }));
+    } else if (store.toLowerCase() === 'playstation') {
+      // 验证PlayStation Store的collection参数
+      if (!VALID_PLAYSTATION_COLLECTIONS.includes(collection)) {
+        return res.status(400).json({
+          error: `无效的PlayStation Store榜单类型: ${collection}`,
+          validCollections: VALID_PLAYSTATION_COLLECTIONS
+        });
+      }
+
+      // 验证国家/地区参数
+      if (!SUPPORTED_REGIONS[country]) {
+        return res.status(400).json({
+          error: `不支持的PlayStation Store国家/地区: ${country}`,
+          validCountries: Object.keys(SUPPORTED_REGIONS)
+        });
+      }
+
+      try {
+        // 获取PlayStation Store游戏数据
+        console.log('Fetching PlayStation Store data with:', { collection, country });
+        const psData = await getPSGames(collection, country, 1, 1, 50, 100);
+        result = psData.gameList;
+        console.log(`Successfully fetched ${result.length} games from PlayStation Store`);
+      } catch (error) {
+        console.error('PlayStation Store Scraper error:', error);
+        return res.status(500).json({
+          error: `PlayStation Store数据获取失败: ${error.message}`,
+          details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // 格式化PlayStation Store数据，使其与其他应用商店数据格式一致
+      result = result.map(game => ({
+        id: game.id,
+        appId: game.id,
+        title: game.title,
+        url: `https://store.playstation.com/${SUPPORTED_REGIONS[country]}/product/${game.id}`,
+        description: game.description || '',
+        icon: game.icon,
+        genres: ['游戏'],
+        primaryGenre: game.primaryGenre || '游戏',
+        primaryGenreId: 0,
+        contentRating: '',
+        languages: [],
+        size: '',
+        requiredOsVersion: '',
+        released: '',
+        updated: '',
+        releaseNotes: '',
+        version: '',
+        price: game.price || 0,
+        currency: game.currency || 'USD',
+        free: game.free || true,
+        developer: game.developer || '',
+        developerUrl: '',
+        developerWebsite: '',
+        score: 0,
+        reviews: 0,
+        currentVersionScore: 0,
+        currentVersionReviews: 0,
+        screenshots: game.screenshots || [],
+        store: 'PlayStation Store'
       }));
     } else {
       // 验证App Store的collection参数

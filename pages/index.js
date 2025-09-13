@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 // 定义应用商店列表
 const stores = [
   { code: 'appstore', name: 'App Store' },
-  { code: 'googleplay', name: 'Google Play' }
+  { code: 'googleplay', name: 'Google Play' },
+  { code: 'playstation', name: 'PlayStation Store' }
 ];
 
 // 定义主要国家列表
@@ -40,6 +41,14 @@ const googlePlayCollections = [
   { code: 'TOP_PAID', name: '付费榜' }
 ];
 
+// 定义PlayStation Store应用集合类型列表
+const playstationCollections = [
+  { code: 'topselling', name: '畅销榜(sales30)' },
+  { code: 'sales1', name: 'sales1' },
+  { code: 'sales7', name: 'sales7' },
+  { code: 'sales365', name: 'sales365' }
+];
+
 export default function Home() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +58,9 @@ export default function Home() {
   const [store, setStore] = useState('appstore');
   
   // 根据当前选择的应用商店获取对应的集合列表
-  const collections = store === 'appstore' ? appStoreCollections : googlePlayCollections;
+  const collections = store === 'appstore' ? appStoreCollections :
+                     store === 'googleplay' ? googlePlayCollections :
+                     playstationCollections;
 
   useEffect(() => {
     async function fetchApps() {
@@ -99,6 +110,11 @@ export default function Home() {
       const isValidGooglePlayCollection = googlePlayCollections.some(c => c.code === collection);
       if (!isValidGooglePlayCollection) {
         setCollection(googlePlayCollections[0].code);
+      }
+    } else if (store === 'playstation') {
+      const isValidPlaystationCollection = playstationCollections.some(c => c.code === collection);
+      if (!isValidPlaystationCollection) {
+        setCollection(playstationCollections[0].code);
       }
     }
   }, [store, collection, country]);
@@ -197,8 +213,10 @@ export default function Home() {
     // 在切换商店时，同时更新集合类型为新商店的默认集合
     if (newStore === 'appstore') {
       setCollection(appStoreCollections[0].code);
-    } else {
+    } else if (newStore === 'googleplay') {
       setCollection(googlePlayCollections[0].code);
+    } else if (newStore === 'playstation') {
+      setCollection(playstationCollections[0].code);
     }
     
     // 最后更新商店值
@@ -230,12 +248,29 @@ export default function Home() {
   // 获取当前集合类型名称
   const getCurrentCollectionName = () => {
     const currentCollection = collections.find(c => c.code === collection);
-    return currentCollection ? currentCollection.name : (store === 'appstore' ? 'iOS畅销榜' : '畅销榜');
+    return currentCollection ? currentCollection.name :
+           (store === 'appstore' ? 'iOS畅销榜' :
+            store === 'googleplay' ? '畅销榜' : '畅销榜');
   };
 
   return (
     <div className="container">
       <h1 className="title">{getCurrentStoreName()} {getCurrentCountryName()}{getCurrentCollectionName()}</h1>
+      
+      {/* 更新提示 */}
+      <div style={{
+        backgroundColor: '#d4edda',
+        border: '1px solid #c3e6cb',
+        borderRadius: '8px',
+        padding: '12px 16px',
+        marginBottom: '20px',
+        fontSize: '14px',
+        color: '#155724',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        textAlign: 'center'
+      }}>
+        <strong>9月13日更新：</strong>支持PlayStation商店畅销榜
+      </div>
       
       <div className="selectors-container">
         <div className="selector">
@@ -286,6 +321,23 @@ export default function Home() {
           </select>
         </div>
       </div>
+      
+      {/* 当选择 PlayStation Store 时显示提示信息 */}
+      {store === 'playstation' && (
+        <div style={{
+          backgroundColor: '#fff3cd',
+          border: '1px solid #ffeaa7',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '20px',
+          fontSize: '14px',
+          color: '#856404',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+        }}>
+          <strong>提示：</strong>sales1、sales7、sales365 是 PlayStation 没有明示但有响应的 API 字段，其具体含义尚不明确。唯一可以确定的是，当前的畅销榜是sales30。
+        </div>
+      )}
+      
       {apps.length === 0 ? (
         <div className="empty">没有找到应用</div>
       ) : (
@@ -301,7 +353,7 @@ export default function Home() {
                   <p className="app-category">{app.primaryGenre}</p>
                   {app.price === 0 ? 
                     <span className="price free">免费</span> : 
-                    <span className="price paid">¥{app.price}</span>
+                    <span className="price paid">{app.price}</span>
                   }
                 </div>
               </div>
@@ -312,7 +364,7 @@ export default function Home() {
 
       <style jsx>{`
         .container {
-          max-width: 800px;
+          max-width: 900px;
           margin: 0 auto;
           padding: 20px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
