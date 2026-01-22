@@ -27,7 +27,7 @@ const countries = [
 // 定义App Store应用集合类型列表
 const appStoreCollections = [
   { code: 'topgrossingapplications', name: 'iOS畅销榜' },
-  { code: 'topfreeapplications', name: 'iOS免费榜' },
+  { code: 'topfreeapplications', name: 'iOS应用免费榜' },
   { code: 'toppaidapplications', name: 'iOS付费榜' },
   { code: 'topgrossingipadapplications', name: 'iPad畅销榜' },
   { code: 'topfreeipadapplications', name: 'iPad免费榜' },
@@ -269,7 +269,9 @@ export default function Home() {
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
         textAlign: 'center'
       }}>
-        <strong>9月13日更新：</strong>支持PlayStation商店畅销榜
+        <strong>2025年9月13日更新：</strong>支持PlayStation商店畅销榜
+        <br />
+        <strong>目前存在的问题：</strong>iOS免费榜只有应用没有游戏
       </div>
       
       <div className="selectors-container">
