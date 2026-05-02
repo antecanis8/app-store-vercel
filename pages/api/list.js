@@ -2,6 +2,9 @@ import * as appStore from 'app-store-scraper';
 import * as googlePlay from 'google-play-scraper';
 const { getPSGames, SUPPORTED_REGIONS, SUPPORTED_COLLECTIONS } = require('../../lib/playstation-store');
 
+const CACHE_TTL_SECONDS = 600;
+const CACHE_SWR_SECONDS = 300;
+
 // 定义App Store有效的 collection 值
 const VALID_APP_STORE_COLLECTIONS = [
   'topfreeapplications',
@@ -34,6 +37,19 @@ function toListItem(app) {
     primaryGenre: app.primaryGenre || app.genre || '未知',
     price: app.price || 0
   };
+}
+
+function setListCacheHeaders(res) {
+  const fetchedAt = new Date();
+
+  res.setHeader(
+    'Cache-Control',
+    `public, max-age=30, s-maxage=${CACHE_TTL_SECONDS}, stale-while-revalidate=${CACHE_SWR_SECONDS}`
+  );
+  res.setHeader('X-Data-Fetched-At', fetchedAt.toISOString());
+  res.setHeader('X-Data-Next-Fetch-At', new Date(fetchedAt.getTime() + CACHE_TTL_SECONDS * 1000).toISOString());
+  res.setHeader('X-Data-Cache-Ttl', String(CACHE_TTL_SECONDS));
+  res.setHeader('X-Data-Cache-Swr', String(CACHE_SWR_SECONDS));
 }
 
 export default async (req, res) => {
@@ -179,6 +195,8 @@ export default async (req, res) => {
       console.log(`Successfully fetched ${result.length} apps from ${store}`);
     }
     
+    setListCacheHeaders(res);
+
     return res.status(200).json(result);
 
   } catch (error) {

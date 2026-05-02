@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 // 定义应用商店列表
 const stores = [
@@ -49,10 +49,27 @@ const playstationCollections = [
   { code: 'sales365', name: 'sales365' }
 ];
 
+function formatDateTime(value) {
+  if (!value) return '暂无';
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(new Date(value));
+}
+
 export default function Home() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [fetchedAt, setFetchedAt] = useState(null);
+  const [nextFetchAt, setNextFetchAt] = useState(null);
   const [country, setCountry] = useState('cn');
   const [collection, setCollection] = useState('topgrossingapplications');
   const [store, setStore] = useState('appstore');
@@ -62,40 +79,56 @@ export default function Home() {
                      store === 'googleplay' ? googlePlayCollections :
                      playstationCollections;
 
-  useEffect(() => {
-    async function fetchApps() {
-      try {
+  const fetchApps = useCallback(async ({ forceRefresh = false } = {}) => {
+    try {
+      if (forceRefresh) {
+        setRefreshing(true);
+      } else {
         setLoading(true);
-        setError(null);
-        
-        console.log('Fetching apps:', { store, collection, country });
-        
-        const response = await fetch(`/api/list?collection=${collection}&country=${country}&store=${store}`);
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `请求失败，状态码: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data || data.length === 0) {
-          setError('没有找到应用数据');
-          setApps([]);
-        } else {
-          setApps(data);
-        }
-      } catch (error) {
-        console.error('Error fetching apps:', error);
-        setError(error.message || '获取应用数据失败');
-        setApps([]);
-      } finally {
-        setLoading(false);
       }
+      setError(null);
+      
+      console.log('Fetching apps:', { store, collection, country, forceRefresh });
+      
+      const requestOptions = forceRefresh ? {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache'
+        }
+      } : undefined;
+      const response = await fetch(`/api/list?collection=${collection}&country=${country}&store=${store}`, requestOptions);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `请求失败，状态码: ${response.status}`);
+      }
+      
+      const payload = await response.json();
+      const data = Array.isArray(payload) ? payload : payload?.apps;
+      
+      setFetchedAt(response.headers.get('x-data-fetched-at') || payload?.fetchedAt || null);
+      setNextFetchAt(response.headers.get('x-data-next-fetch-at') || payload?.nextFetchAt || null);
+      
+      if (!data || data.length === 0) {
+        setError('没有找到应用数据');
+        setApps([]);
+      } else {
+        setApps(data);
+      }
+    } catch (error) {
+      console.error('Error fetching apps:', error);
+      setError(error.message || '获取应用数据失败');
+      setApps([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  }, [country, collection, store]);
 
+  useEffect(() => {
     fetchApps();
-  }, [country, collection, store]); // 当国家、集合类型或应用商店变化时重新获取数据
+  }, [fetchApps]); // 当国家、集合类型或应用商店变化时重新获取数据
   
   // 验证当前集合类型是否与当前商店匹配（处理URL参数直接修改等特殊情况）
   useEffect(() => {
@@ -322,6 +355,21 @@ export default function Home() {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="refresh-bar">
+        <div className="refresh-times">
+          <span>上次抓取：{formatDateTime(fetchedAt)}</span>
+          <span>下次自动抓取：{formatDateTime(nextFetchAt)}</span>
+        </div>
+        <button
+          type="button"
+          className="refresh-button"
+          onClick={() => fetchApps({ forceRefresh: true })}
+          disabled={loading || refreshing}
+        >
+          {refreshing ? '更新中...' : '手动更新'}
+        </button>
       </div>
       
       {/* 当选择 PlayStation Store 时显示提示信息 */}
@@ -551,6 +599,46 @@ export default function Home() {
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
+        .refresh-bar {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
+          background: #fff;
+          padding: 12px;
+          margin-bottom: 20px;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .refresh-times {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px 16px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #333;
+          line-height: 1.5;
+        }
+
+        .refresh-button {
+          width: 100%;
+          padding: 8px 14px;
+          border: 1px solid #111;
+          border-radius: 6px;
+          background: #111;
+          color: #fff;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        .refresh-button:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+
         .select-input {
           margin-left: 10px;
           padding: 8px 12px;
@@ -579,6 +667,16 @@ export default function Home() {
             flex-direction: row;
             justify-content: center;
             gap: 20px;
+          }
+
+          .refresh-bar {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+          }
+
+          .refresh-button {
+            width: auto;
           }
         }
 
