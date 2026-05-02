@@ -25,6 +25,17 @@ const VALID_GOOGLE_PLAY_COLLECTIONS = [
 // 定义PlayStation Store有效的 collection 值
 const VALID_PLAYSTATION_COLLECTIONS = Object.keys(SUPPORTED_COLLECTIONS || {});
 
+function toListItem(app) {
+  return {
+    id: app.id || app.appId,
+    title: app.title || '',
+    icon: app.icon || '',
+    developer: app.developer || '',
+    primaryGenre: app.primaryGenre || app.genre || '未知',
+    price: app.price || 0
+  };
+}
+
 export default async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -63,7 +74,7 @@ export default async (req, res) => {
           collection,
           country,
           num: 100,
-          fullDetail: true
+          fullDetail: false
         });
         console.log(`Successfully fetched ${result.length} apps from Google Play`);
       } catch (error) {
@@ -78,34 +89,11 @@ export default async (req, res) => {
       // 格式化Google Play数据，使其与App Store数据格式一致
       result = result.map(app => ({
         id: app.appId,
-        appId: app.appId,
         title: app.title,
-        url: app.url,
-        description: app.description || '',
         icon: app.icon,
-        genres: app.genres || [],
         primaryGenre: app.genre || '未知',
-        primaryGenreId: 0,
-        contentRating: app.contentRating || '',
-        languages: [],
-        size: app.size || '',
-        requiredOsVersion: app.androidVersion || '',
-        released: app.released || '',
-        updated: app.updated || '',
-        releaseNotes: app.recentChanges || '',
-        version: app.version || '',
         price: app.priceText === 'Free' ? 0 : parseFloat(app.price) || 0,
-        currency: app.currency || 'USD',
-        free: app.free === undefined ? app.priceText === 'Free' : app.free,
-        developer: app.developer || '',
-        developerUrl: app.developerUrl || '',
-        developerWebsite: app.developerWebsite || '',
-        score: app.score || 0,
-        reviews: app.reviews || 0,
-        currentVersionScore: app.score || 0,
-        currentVersionReviews: app.reviews || 0,
-        screenshots: app.screenshots || [],
-        store: 'Google Play'
+        developer: app.developer || ''
       }));
     } else if (store.toLowerCase() === 'playstation') {
       // 验证PlayStation Store的collection参数
@@ -142,34 +130,11 @@ export default async (req, res) => {
       // 格式化PlayStation Store数据，使其与其他应用商店数据格式一致
       result = result.map(game => ({
         id: game.id,
-        appId: game.id,
         title: game.title,
-        url: `https://store.playstation.com/${SUPPORTED_REGIONS[country]}/product/${game.id}`,
-        description: game.description || '',
         icon: game.icon,
-        genres: ['游戏'],
         primaryGenre: game.primaryGenre || '游戏',
-        primaryGenreId: 0,
-        contentRating: '',
-        languages: [],
-        size: '',
-        requiredOsVersion: '',
-        released: '',
-        updated: '',
-        releaseNotes: '',
-        version: '',
         price: game.price || 0,
-        currency: game.currency || 'USD',
-        free: game.free || true,
-        developer: game.developer || '',
-        developerUrl: '',
-        developerWebsite: '',
-        score: 0,
-        reviews: 0,
-        currentVersionScore: 0,
-        currentVersionReviews: 0,
-        screenshots: game.screenshots || [],
-        store: 'PlayStation Store'
+        developer: game.developer || ''
       }));
     } else {
       // 验证App Store的collection参数
@@ -190,11 +155,7 @@ export default async (req, res) => {
         });
         console.log(`Successfully fetched ${result.length} apps from App Store`);
 
-        // 为App Store数据添加store标识
-        result = result.map(app => ({
-          ...app,
-          store: 'App Store'
-        }));
+        result = result.map(toListItem);
       } catch (error) {
         console.error('App Store Scraper error:', error);
         return res.status(500).json({
