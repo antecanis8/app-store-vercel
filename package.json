@@ -10,7 +10,7 @@
     "app-store-scraper": "latest",
     "google-play-scraper": "^10.0.1",
     "lodash": "^4.17.21",
-    "next": "^16.0.7",
+    "next": "16.0.10",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "request-promise": "^4.2.6"
